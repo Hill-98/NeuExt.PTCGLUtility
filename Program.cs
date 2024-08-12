@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 
 namespace NeuExt.PTCGLUtility
@@ -15,25 +16,35 @@ namespace NeuExt.PTCGLUtility
 #else
             if (args.Length <= 0)
             {
+                Environment.Exit(1);
                 return;
             }
             var action = args[0];
 #endif
+            var resets = args.Skip(1).ToArray();
             switch (action.TrimStart('-'))
             {
                 case "CheckPTCGLIsRunning":
                     Output(CheckPTCGLIsRunning() ? "1" : "0");
                     break;
-                case "DetectPTCGLInstallDirectory":
-                    Output(DetectPTCGLInstallDirectory());
-                    break;
-                case "GetShortcutTarget":
-                    if (args.Length != 2)
+                case "CreateDesktopShortcut":
+                    if (resets.Length < 2)
                     {
                         Environment.Exit(1);
                         break;
                     }
-                    Output(GetShortcutTarget(args[1]));
+                    CreateDesktopShortcut(resets[0], resets[1]);
+                    break;
+                case "DetectPTCGLInstallDirectory":
+                    Output(DetectPTCGLInstallDirectory());
+                    break;
+                case "GetShortcutTarget":
+                    if (resets.Length < 1)
+                    {
+                        Environment.Exit(1);
+                        break;
+                    }
+                    Output(GetShortcutTarget(resets[0]));
                     break;
                 case "help":
                     Console.WriteLine("Usage: NeuExt.PTCGLUtility.exe <action>");
@@ -58,7 +69,22 @@ namespace NeuExt.PTCGLUtility
         {
             var ps = Process.GetProcessesByName("Pokemon TCG Live");
             return ps.Length > 0;
+        }
 
+
+        static void CreateDesktopShortcut(string name, string target)
+        {
+            var lnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"{name}.lnk");
+            if (File.Exists(lnk))
+            {
+                File.Delete(lnk);
+            }
+            var shell = new IWshRuntimeLibrary.WshShell();
+            var shortcut = (IWshRuntimeLibrary.IWshShortcut)shell.CreateShortcut(lnk);
+            shortcut.Description = name;
+            shortcut.TargetPath = target;
+            shortcut.WorkingDirectory = Path.GetDirectoryName(target);
+            shortcut.Save();
         }
 
         static string DetectPTCGLInstallDirectory()
